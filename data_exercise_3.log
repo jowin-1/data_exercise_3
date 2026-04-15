@@ -1,0 +1,528 @@
+--------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\jowin\Box\388\Exercise3\data_exercise_3.log
+  log type:  text
+ opened on:  15 Apr 2026, 09:57:06
+
+. 
+. ** DATA CLEANING **
+. 
+. use pwt1001, clear
+
+. 
+. // used AI to automate the following code based on my findings of mismatches
+. 
+. replace country = "Bolivia"                     if country == "Bolivia (Plurin
+> ational State of)"
+(70 real changes made)
+
+. replace country = "Bosnia-Herzegovina"          if country == "Bosnia and Herz
+> egovina"
+(70 real changes made)
+
+. replace country = "Ivory Coast"                 if country == "Côte d'Ivoire"
+(70 real changes made)
+
+. replace country = "Iran"                        if country == "Iran (Islamic R
+> epublic of)"
+(70 real changes made)
+
+. replace country = "Laos"                        if country == "Lao People's DR
+> "
+(70 real changes made)
+
+. replace country = "Macedonia"                   if country == "North Macedonia
+> "
+(70 real changes made)
+
+. replace country = "Moldova"                     if country == "Republic of Mol
+> dova"
+(70 real changes made)
+
+. replace country = "Burma"                       if country == "Myanmar"
+(70 real changes made)
+
+. replace country = "Russia"                      if country == "Russian Federat
+> ion"
+(70 real changes made)
+
+. replace country = "Slovak Republic"             if country == "Slovakia"
+(70 real changes made)
+
+. replace country = "South Korea"                 if country == "Republic of Kor
+> ea"
+(70 real changes made)
+
+. replace country = "Syria"                       if country == "Syrian Arab Rep
+> ublic"
+(70 real changes made)
+
+. replace country = "Tanzania"                    if country == "U.R. of Tanzani
+> a: Mainland"
+(70 real changes made)
+
+. replace country = "Venezuela"                   if country == "Venezuela (Boli
+> varian Republic of)"
+(70 real changes made)
+
+. replace country = "Vietnam"                     if country == "Viet Nam"
+(70 real changes made)
+
+. replace country = "Hong Kong"                   if country == "China, Hong Kon
+> g SAR"
+(70 real changes made)
+
+. replace country = "Democratic Republic of the Congo" if country == "D.R. of th
+> e Congo"
+(70 real changes made)
+
+. replace country = "Republic of the Congo"            if country == "Congo"
+(70 real changes made)
+
+. 
+. save pwt1001_updated, replace
+file pwt1001_updated.dta saved
+
+. 
+. use chat, clear
+
+. 
+. 
+. * Renaming country variable to prepare for merge *
+. rename country_name country 
+
+. 
+. // there were a couple countries I fixed in this dataset as well:
+. 
+. replace country = "Venezuela" if country == "Venezuala"
+(259 real changes made)
+
+. replace country = "Yemen" if country == "South Yemen"
+(259 real changes made)
+
+. 
+. 
+. ** had to collapse because I combined Yemen and South Yemen:
+. 
+. collapse (mean) ag_tractor ag_harvester ag_milkingmachine ///
+>                irrigatedarea fert_total pest_total, by(country year)
+
+. save chat_collapsed, replace
+file chat_collapsed.dta saved
+
+. 
+. 
+. use pwt1001_updated, clear
+
+. 
+. *merging the datasets*
+. merge 1:1 country year using chat_collapsed
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                        36,786
+        from master                     4,078  (_merge==1)
+        from using                     32,708  (_merge==2)
+
+    Matched                             8,732  (_merge==3)
+    -----------------------------------------
+
+. keep if _m == 3
+(36,786 observations deleted)
+
+. drop _m
+
+. 
+. * Limiting the sample to only 1970 to 2000 *
+. drop if year < 1970 | year > 2000
+(4,144 observations deleted)
+
+. 
+. * Making GDP per capita variable *
+. 
+. /* Originally, I made a gdp per capita variable that divided gdp by population
+> .
+> However, this made my output wrong later because I had missingness in populati
+> on.
+> So, here I set gdppercapita = rgdpe, because the growth rate will remain uncha
+> nged
+> in either situation, but it will be incorrect if I divide by population becaus
+> e of 
+> missingness. */
+. 
+. gen gdppercapita = rgdpe
+(479 missing values generated)
+
+. 
+. *reshaping the data to wide* 
+. keep rgdpe pop country year ag_tractor ag_harvester ///
+>         irrigatedarea fert_total pest_total gdppercapita ///
+>         emp avh 
+
+.         
+. greshape wide rgdpe pop emp avh gdppercapita ag_tractor ag_harvester ///
+>         irrigatedarea fert_total pest_total , i(country) j(year)
+(note: j = 1970 1971 1972 1973 1974 1975 1976 1977 1978 1979 1980 1981 1982 1983
+>  1984 1985 1986 1987 1988 1989 1990 1991 1992 1993 1994 1995 1996 1997 1998 19
+> 99 2000)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                    4,588   ->   148                  
+Number of variables                   12  ->   311                  
+j (31 values)                      year   ->   (dropped)
+xij variables:
+                                  rgdpe   ->   rgdpe1970 rgdpe1971 ... rgdpe2000
+                                    pop   ->   pop1970 pop1971 ... pop2000
+                                    emp   ->   emp1970 emp1971 ... emp2000
+                                    avh   ->   avh1970 avh1971 ... avh2000
+                           gdppercapita   ->   gdppercapita1970 gdppercapita1971
+>  ... gdppercapita2000
+                             ag_tractor   ->   ag_tractor1970 ag_tractor1971 ...
+>  ag_tractor2000
+                           ag_harvester   ->   ag_harvester1970 ag_harvester1971
+>  ... ag_harvester2000
+                          irrigatedarea   ->   irrigatedarea1970 irrigatedarea19
+> 71 ... irrigatedarea2000
+                             fert_total   ->   fert_total1970 fert_total1971 ...
+>  fert_total2000
+                             pest_total   ->   pest_total1970 pest_total1971 ...
+>  pest_total2000
+-----------------------------------------------------------------------------
+
+.         
+. 
+. *Growth rate formula for GDP and technologies*
+. forvalues i=1970/1999 {
+  2.         local j = `i' + 1
+  3.         gen gdppc_growth`i' = ((gdppercapita`j' / gdppercapita`i') - 1) * 1
+> 00
+  4.         gen tractor_growth`i' = ((ag_tractor`j' / ag_tractor`i') - 1) * 100
+  5.         gen harvester_growth`i' = ((ag_harvester`j' / ag_harvester`i') - 1)
+>  * 100
+  6.         gen irr_growth`i' = ((irrigatedarea`j' / irrigatedarea`i') - 1) * 1
+> 00
+  7.         gen fert_growth`i' = ((fert_total`j' / fert_total`i') - 1) * 100
+  8.         gen pest_growth`i' = ((pest_total`j' / pest_total`i') - 1) * 100
+  9. }
+(24 missing values generated)
+(25 missing values generated)
+(58 missing values generated)
+(31 missing values generated)
+(32 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(58 missing values generated)
+(31 missing values generated)
+(32 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(58 missing values generated)
+(31 missing values generated)
+(30 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(58 missing values generated)
+(31 missing values generated)
+(27 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(58 missing values generated)
+(31 missing values generated)
+(27 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(57 missing values generated)
+(31 missing values generated)
+(27 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(57 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(57 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(57 missing values generated)
+(30 missing values generated)
+(30 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(28 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(31 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(30 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(30 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(30 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(27 missing values generated)
+(148 missing values generated)
+(24 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(27 missing values generated)
+(148 missing values generated)
+(23 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(28 missing values generated)
+(148 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(95 missing values generated)
+(25 missing values generated)
+(56 missing values generated)
+(30 missing values generated)
+(29 missing values generated)
+(94 missing values generated)
+(7 missing values generated)
+(38 missing values generated)
+(12 missing values generated)
+(12 missing values generated)
+(86 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(10 missing values generated)
+(85 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(10 missing values generated)
+(73 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(9 missing values generated)
+(67 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(9 missing values generated)
+(77 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(9 missing values generated)
+(88 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(8 missing values generated)
+(99 missing values generated)
+(5 missing values generated)
+(35 missing values generated)
+(10 missing values generated)
+(9 missing values generated)
+(106 missing values generated)
+
+. 
+. 
+. * Reshaping back to long *
+. greshape long emp avh gdppc_growth tractor_growth harvester_growth irr_growth 
+> ///
+>         rgdpe pop gdppercapita ag_tractor ag_harvester irrigatedarea fert_tota
+> l pest_total ///
+>         fert_growth pest_growth, i(country) j(year)
+(note: j = 1970 1971 1972 1973 1974 1975 1976 1977 1978 1979 1980 1981 1982 1983
+>  1984 1985 1986 1987 1988 1989 1990 1991 1992 1993 1994 1995 1996 1997 1998 19
+> 99 2000)
+
+Data                               wide   ->   long
+-----------------------------------------------------------------------------
+Number of obs.                      148   ->   4,588                
+Number of variables                  491  ->   18                   
+j (31 values)                             ->   year
+xij variables:
+            emp1970 emp1971 ... emp2000   ->   emp
+            avh1970 avh1971 ... avh2000   ->   avh
+gdppc_growth1970 gdppc_growth1971 ... gdppc_growth2000->gdppc_growth
+tractor_growth1970 tractor_growth1971 ... tractor_growth2000->tractor_growth
+harvester_growth1970 harvester_growth1971 ... harvester_growth2000->harvester_gr
+> owth
+irr_growth1970 irr_growth1971 ... irr_growth2000->irr_growth
+      rgdpe1970 rgdpe1971 ... rgdpe2000   ->   rgdpe
+            pop1970 pop1971 ... pop2000   ->   pop
+gdppercapita1970 gdppercapita1971 ... gdppercapita2000->gdppercapita
+ag_tractor1970 ag_tractor1971 ... ag_tractor2000->ag_tractor
+ag_harvester1970 ag_harvester1971 ... ag_harvester2000->ag_harvester
+irrigatedarea1970 irrigatedarea1971 ... irrigatedarea2000->irrigatedarea
+fert_total1970 fert_total1971 ... fert_total2000->fert_total
+pest_total1970 pest_total1971 ... pest_total2000->pest_total
+fert_growth1970 fert_growth1971 ... fert_growth2000->fert_growth
+pest_growth1970 pest_growth1971 ... pest_growth2000->pest_growth
+-----------------------------------------------------------------------------
+
+.         
+. ** Converting pop variable into integer so I can collapse by frequency:
+. replace pop = round(pop * 1000000)
+(4,109 real changes made)
+
+. 
+. save master_dataset, replace 
+file master_dataset.dta saved
+
+. 
+. * Sorting developed and non-developed nations
+. gen developed = 0
+
+. replace developed = 1 if ///
+>         country == "France" | ///
+>         country == "Germany" | ///
+>         country == "Italy" | ///
+>         country == "United Kingdom" | ///
+>         country == "United States"
+(155 real changes made)
+
+.         
+. ** Collapse by developed, weighted for population **
+. collapse (mean) gdppc_growth tractor_growth harvester_growth irr_growth ///
+>         fert_growth pest_growth [fweight = pop] , by(developed)
+
+. 
+. * summary statistics:
+. bysort developed: summarize
+
+--------------------------------------------------------------------------------
+-> developed = 0
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+   developed |          1           0           .          0          0
+gdppc_growth |          1    4.328365           .   4.328365   4.328365
+tractor_gr~h |          1    6.300829           .   6.300829   6.300829
+harvester_~h |          1    7.501628           .   7.501628   7.501628
+  irr_growth |          1    1.677085           .   1.677085   1.677085
+-------------+---------------------------------------------------------
+ fert_growth |          1    7.483863           .   7.483863   7.483863
+ pest_growth |          1    3.484012           .   3.484012   3.484012
+
+--------------------------------------------------------------------------------
+-> developed = 1
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+   developed |          1           1           .          1          1
+gdppc_growth |          1    3.214873           .   3.214873   3.214873
+tractor_gr~h |          1    .0963416           .   .0963416   .0963416
+harvester_~h |          1   -.2436431           .  -.2436431  -.2436431
+  irr_growth |          1    1.298082           .   1.298082   1.298082
+-------------+---------------------------------------------------------
+ fert_growth |          1    .2492431           .   .2492431   .2492431
+ pest_growth |          1    1.102115           .   1.102115   1.102115
+
+
+.                 
+. /* We observe that non-developed countries have higher gdp per capita growth r
+> ates
+> and higher growth rates for all technologies included in my analysis. */
+. 
+. ************************
+. *** regression ***
+. ************************
+. 
+. use master_dataset, clear       
+
+. 
+. * We want to determine the impact of agricultural tech growth rate on gdp per 
+> cap growth *
+. * Controls: population, emp - employed people, year (time trends)
+. reg gdppc_growth tractor_growth harvester_growth irr_growth fert_growth pest_g
+> rowth ///
+>         pop emp year // <- controls 
+
+      Source |       SS           df       MS      Number of obs   =       497
+-------------+----------------------------------   F(8, 488)       =      2.03
+       Model |   709.48646         8  88.6858074   Prob > F        =    0.0418
+    Residual |  21361.3897       488  43.7733395   R-squared       =    0.0321
+-------------+----------------------------------   Adj R-squared   =    0.0163
+       Total |  22070.8761       496  44.4977341   Root MSE        =    6.6161
+
+-------------------------------------------------------------------------------
+ gdppc_growth | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+tractor_gro~h |  -.0113339   .0399582    -0.28   0.777    -.0898452    .0671775
+harvester_g~h |    .079638   .0358963     2.22   0.027     .0091077    .1501683
+   irr_growth |  -.0293996   .0458012    -0.64   0.521    -.1193914    .0605922
+  fert_growth |   .0121418   .0076019     1.60   0.111    -.0027948    .0270783
+  pest_growth |   .0004736   .0013063     0.36   0.717     -.002093    .0030403
+          pop |   1.23e-08   8.35e-09     1.48   0.141    -4.08e-09    2.87e-08
+          emp |  -.0208846   .0163043    -1.28   0.201      -.05292    .0111507
+         year |   .1786197   .1154917     1.55   0.123    -.0483027     .405542
+        _cons |  -352.4638   230.3396    -1.53   0.127    -805.0436    100.1159
+-------------------------------------------------------------------------------
+
+. 
+. /* We observe only one statistically significant independent variable: the 
+> harvester growth rate, with a p-value of 0.027. With an R-squared of 0.0321 an
+> d 
+> only 497 observations without missingness in our regression, we are suspisciou
+> s of
+> any inference and are likely not observing the true causal effecct. */
+. 
+. log close 
+      name:  <unnamed>
+       log:  C:\Users\jowin\Box\388\Exercise3\data_exercise_3.log
+  log type:  text
+ closed on:  15 Apr 2026, 09:57:06
+--------------------------------------------------------------------------------
