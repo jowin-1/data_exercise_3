@@ -120,7 +120,9 @@ collapse (mean) gdppc_growth tractor_growth harvester_growth irr_growth ///
 	fert_growth pest_growth [fweight = pop] , by(developed)
 
 * summary statistics:
-bysort developed: summarize
+bysort developed: summarize // developed vs. non-developed
+
+export excel using binary_sum.xlsx, replace firstrow(variables)
 		
 /* We observe that non-developed countries have higher gdp per capita growth rates
 and higher growth rates for all technologies included in my analysis. */
@@ -136,10 +138,18 @@ use master_dataset, clear
 reg gdppc_growth tractor_growth harvester_growth irr_growth fert_growth pest_growth ///
 	pop emp year // <- controls 
 
+
 /* We observe only one statistically significant independent variable: the 
 harvester growth rate, with a p-value of 0.027. With an R-squared of 0.0321 and 
 only 497 observations without missingness in our regression, we are suspiscious of
 any inference and are likely not observing the true causal effecct. */
+
+** Trying again, ommitting pest_growth because it limits the sample size so much
+reg gdppc_growth tractor_growth harvester_growth irr_growth fert_growth ///
+	pop emp year // <- controls 
+
+* additional summary statistics *
+sum gdppc_growth tractor_growth harvester_growth irr_growth fert_growth pest_growth
 
 log close 
 

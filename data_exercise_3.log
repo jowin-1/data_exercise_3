@@ -2,7 +2,7 @@
       name:  <unnamed>
        log:  C:\Users\jowin\Box\388\Exercise3\data_exercise_3.log
   log type:  text
- opened on:  15 Apr 2026, 09:57:06
+ opened on:  15 Apr 2026, 20:50:02
 
 . 
 . ** DATA CLEANING **
@@ -441,7 +441,7 @@ file master_dataset.dta saved
 
 . 
 . * summary statistics:
-. bysort developed: summarize
+. bysort developed: summarize // developed vs. non-developed
 
 --------------------------------------------------------------------------------
 -> developed = 0
@@ -471,6 +471,10 @@ harvester_~h |          1   -.2436431           .  -.2436431  -.2436431
  fert_growth |          1    .2492431           .   .2492431   .2492431
  pest_growth |          1    1.102115           .   1.102115   1.102115
 
+
+. 
+. export excel using binary_sum.xlsx, replace firstrow(variables)
+file binary_sum.xlsx saved
 
 .                 
 . /* We observe that non-developed countries have higher gdp per capita growth r
@@ -513,6 +517,7 @@ harvester_g~h |    .079638   .0358963     2.22   0.027     .0091077    .1501683
 -------------------------------------------------------------------------------
 
 . 
+. 
 . /* We observe only one statistically significant independent variable: the 
 > harvester growth rate, with a p-value of 0.027. With an R-squared of 0.0321 an
 > d 
@@ -520,9 +525,50 @@ harvester_g~h |    .079638   .0358963     2.22   0.027     .0091077    .1501683
 > s of
 > any inference and are likely not observing the true causal effecct. */
 . 
+. ** Trying again, ommitting pest_growth because it limits the sample size so mu
+> ch
+. reg gdppc_growth tractor_growth harvester_growth irr_growth fert_growth ///
+>         pop emp year // <- controls 
+
+      Source |       SS           df       MS      Number of obs   =     2,669
+-------------+----------------------------------   F(7, 2661)      =      6.16
+       Model |   2952.0402         7  421.720028   Prob > F        =    0.0000
+    Residual |  182312.764     2,661  68.5128763   R-squared       =    0.0159
+-------------+----------------------------------   Adj R-squared   =    0.0133
+       Total |  185264.804     2,668  69.4395818   Root MSE        =    8.2773
+
+-------------------------------------------------------------------------------
+ gdppc_growth | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+tractor_gro~h |   .0783907   .0200478     3.91   0.000     .0390799    .1177014
+harvester_g~h |   .0155057   .0121513     1.28   0.202    -.0083212    .0393327
+   irr_growth |  -.0036477   .0208586    -0.17   0.861    -.0445484    .0372531
+  fert_growth |   .0104333   .0031525     3.31   0.001     .0042516    .0166149
+          pop |   2.02e-09   6.73e-09     0.30   0.764    -1.12e-08    1.52e-08
+          emp |  -.0020076   .0139272    -0.14   0.885    -.0293169    .0253017
+         year |  -.0238976   .0192572    -1.24   0.215    -.0616583    .0138631
+        _cons |   50.77945   38.25987     1.33   0.185    -24.24264    125.8015
+-------------------------------------------------------------------------------
+
+. 
+. * additional summary statistics *
+. sum gdppc_growth tractor_growth harvester_growth irr_growth fert_growth pest_g
+> rowth
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+gdppc_growth |      3,961    3.589783     9.81669  -66.30425   152.3222
+tractor_gr~h |      3,848    3.532706     17.7406  -89.45493   848.3105
+harvester_~h |      2,911    3.256481    14.56965        -60   317.5365
+  irr_growth |      3,692    2.630191    8.158165  -73.43062   105.1282
+ fert_growth |      3,725    13.49485     92.2433  -99.80952   3125.806
+-------------+---------------------------------------------------------
+ pest_growth |        610    32.18093    260.4473  -98.74327       4100
+
+. 
 . log close 
       name:  <unnamed>
        log:  C:\Users\jowin\Box\388\Exercise3\data_exercise_3.log
   log type:  text
- closed on:  15 Apr 2026, 09:57:06
+ closed on:  15 Apr 2026, 20:50:03
 --------------------------------------------------------------------------------
